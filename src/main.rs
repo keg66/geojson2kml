@@ -30,6 +30,7 @@ struct Feature {
     geometry: Geometry,
 }
 
+#[allow(non_snake_case)]
 #[derive(Serialize, Deserialize, Debug)]
 struct GeoProperty {
     N02_001: String,
@@ -44,48 +45,8 @@ struct Geometry {
     coordinates: Vec<Vec<Vec<f32>>>,
 }
 
-#[derive(Debug)]
-struct Latlon {
-    lat: f32,
-    lon: f32,
-}
-
-// #[derive(Serialize, Deserialize, Debug)]
-// struct XML {
-//     kml: kml,
-// }
-
-#[derive(Serialize, Deserialize, Debug)]
-struct kml {
-    Document: Doc,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct Doc {
-    name: String,
-    Placemarks: Vec<PlaceMark>,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct PlaceMark {
-    name: String,
-    LineString: Coordinates,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct Coordinates {
-    coordinates: Vec<Vec<f32>>,
-}
-
 fn main() -> std::io::Result<()> {
     let args: Vec<String> = env::args().collect();
-    // println!("{:?}", args);
-
-    // let query_company_name = "京王電鉄";
-    // let query_line_name = "競馬場線";
-    // let query_company_name = "東日本旅客鉄道";
-    // let query_line_name = "山手線";
-    // let mut latlons = Vec::new();
 
     let query_company_name = &args[1] as &str;
     let query_line_name = &args[2] as &str;
@@ -102,9 +63,9 @@ fn main() -> std::io::Result<()> {
         r#"<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
   <Document>
-    <name>{}</name>"#,
-        query_line_name
-    );
+    <name>{} {}</name>"#,
+        query_company_name, query_line_name
+    )?;
 
     let mut id = 0;
 
@@ -113,10 +74,6 @@ fn main() -> std::io::Result<()> {
             && feature.properties.N02_004 == query_company_name
         {
             for line in &feature.geometry.coordinates {
-                // if line.len() <= 2 {
-                //     continue;
-                // }
-
                 write!(
                     file,
                     "
@@ -125,21 +82,16 @@ fn main() -> std::io::Result<()> {
       <LineString>
         <coordinates>",
                     id
-                );
+                )?;
 
                 for coordinate in line {
                     assert_eq!(coordinate.len(), 2);
-                    // let latlon = Latlon {
-                    //     lat: coordinate[1],
-                    //     lon: coordinate[0],
-                    // };
-                    // latlons.push(latlon);
                     write!(
                         file,
                         "
           {},{},0",
                         coordinate[0], coordinate[1]
-                    );
+                    )?;
                 }
 
                 write!(
@@ -148,7 +100,7 @@ fn main() -> std::io::Result<()> {
         </coordinates>
       </LineString>
     </Placemark>"
-                );
+                )?;
             }
             id += 1;
         }
@@ -160,24 +112,8 @@ fn main() -> std::io::Result<()> {
   </Document>
 </kml>
     "#
-    );
+    )?;
 
-    // for latlon in latlons {
-    //     println!("          {},{},0", latlon.lon, latlon.lat);
-    // }
-
-    // let data = kml {
-    //     Document: Doc {
-    //         name: "query_line_name".to_string(),
-    //         Placemarks: Vec::new(),
-    //     },
-    // };
-
-    // let serialized = serde_xml_rs::to_string(&data).unwrap();
-    // println!("serialized = {}", serialized);
-
-    // writeln!(file, "{}", query_line_name);
-    // writeln!(file, r#"{}"#, query_line_name);
     println!("succeeded!!");
     Ok(())
 }
