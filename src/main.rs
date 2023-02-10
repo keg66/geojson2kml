@@ -1,6 +1,7 @@
 use core::panic;
 use serde::{Deserialize, Serialize};
 use serde_json;
+use std::collections::HashSet;
 use std::env;
 use std::fs::File;
 use std::io::Write;
@@ -46,7 +47,32 @@ struct Geometry {
     coordinates: Vec<Vec<Vec<f32>>>,
 }
 
-fn generateKML(company_name: &str, line_name: &str) -> std::io::Result<()> {
+#[derive(Hash, Eq, PartialEq)]
+struct TrainLine {
+    company_name: String,
+    line_name: String,
+}
+
+fn search_candidates(query_line_name: &str) -> HashSet<TrainLine> {
+    let mut candidates = HashSet::new();
+
+    let content = std::fs::read_to_string("N02-20_RailroadSection.geojson").unwrap();
+    let deserialized: Geo = serde_json::from_str(&content).unwrap();
+
+    for feature in deserialized.features {
+        if feature.properties.N02_003.contains(query_line_name) {
+            let candidate = TrainLine {
+                company_name: feature.properties.N02_004,
+                line_name: feature.properties.N02_003,
+            };
+            candidates.insert(candidate);
+        }
+    }
+
+    candidates
+}
+
+fn generate_kml(company_name: &str, line_name: &str) -> std::io::Result<()> {
     let filename = format!("{}_{}.kml", company_name, line_name);
     println!("creating {} ...", filename);
     let mut file = File::create(&filename)?;
@@ -121,9 +147,33 @@ fn generateKML(company_name: &str, line_name: &str) -> std::io::Result<()> {
 fn main() -> std::io::Result<()> {
     let args: Vec<String> = env::args().collect();
 
-    let query_company_name = &args[1] as &str;
-    let query_line_name = &args[2] as &str;
+    let query_line_name = &args[1] as &str;
 
-    generateKML(query_company_name, query_line_name)?;
+    let candidates: Vec<TrainLine> = search_candidates(query_line_name).into_iter().collect();
+
+    let candidate_num = candidates.len();
+    let train_line = if candidate_num == 1 {
+        &candidates[0]
+    } else if candidate_num > 1 {
+        println!("candidates:");
+        for id in 0..candidate_num {
+            println!(
+                "[{}] {} {}",
+                id, &candidates[id].company_name, &candidates[id].line_name
+            );
+        }
+        println!("choose: ");
+
+        let mut word = String::new();
+        std::io::stdin().read_line(&mut word).ok();
+        let answer = word.trim().to_string();
+
+        let chosen_id: usize = answer.parse().unwrap();
+        &candidates[chosen_id]
+    } else {
+        panic!("hoge");
+    };
+
+    generate_kml(&train_line.company_name, &train_line.line_name)?;
     Ok(())
 }
