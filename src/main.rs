@@ -46,13 +46,8 @@ struct Geometry {
     coordinates: Vec<Vec<Vec<f32>>>,
 }
 
-fn main() -> std::io::Result<()> {
-    let args: Vec<String> = env::args().collect();
-
-    let query_company_name = &args[1] as &str;
-    let query_line_name = &args[2] as &str;
-
-    let filename = format!("{}_{}.kml", query_company_name, query_line_name);
+fn generateKML(company_name: &str, line_name: &str) -> std::io::Result<()> {
+    let filename = format!("{}_{}.kml", company_name, line_name);
     println!("creating {} ...", filename);
     let mut file = File::create(&filename)?;
 
@@ -63,25 +58,23 @@ fn main() -> std::io::Result<()> {
         file,
         r#"<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
-  <Document>
-    <name>{} {}</name>"#,
-        query_company_name, query_line_name
+<Document>
+<name>{} {}</name>"#,
+        company_name, line_name
     )?;
 
     let mut id = 0;
 
     for feature in deserialized.features {
-        if feature.properties.N02_003.contains(query_line_name)
-            && feature.properties.N02_004.contains(query_company_name)
-        {
+        if feature.properties.N02_003 == line_name && feature.properties.N02_004 == company_name {
             for line in &feature.geometry.coordinates {
                 write!(
                     file,
                     "
-    <Placemark>
-      <name>{}</name>
-      <LineString>
-        <coordinates>",
+<Placemark>
+  <name>{}</name>
+  <LineString>
+    <coordinates>",
                     id
                 )?;
 
@@ -90,7 +83,7 @@ fn main() -> std::io::Result<()> {
                     write!(
                         file,
                         "
-          {},{},0",
+      {},{},0",
                         coordinate[0], coordinate[1]
                     )?;
                 }
@@ -98,9 +91,9 @@ fn main() -> std::io::Result<()> {
                 write!(
                     file,
                     "
-        </coordinates>
-      </LineString>
-    </Placemark>"
+    </coordinates>
+  </LineString>
+</Placemark>"
                 )?;
             }
             id += 1;
@@ -110,17 +103,27 @@ fn main() -> std::io::Result<()> {
     if id == 0 {
         drop(file);
         std::fs::remove_file(filename)?;
-        panic!("{} {} is not found...", query_company_name, query_line_name);
+        panic!("{} {} is not found...", company_name, line_name);
     }
 
     write!(
         file,
         r#"
-  </Document>
+</Document>
 </kml>
-    "#
+"#
     )?;
 
     println!("succeeded!!");
+    Ok(())
+}
+
+fn main() -> std::io::Result<()> {
+    let args: Vec<String> = env::args().collect();
+
+    let query_company_name = &args[1] as &str;
+    let query_line_name = &args[2] as &str;
+
+    generateKML(query_company_name, query_line_name)?;
     Ok(())
 }
