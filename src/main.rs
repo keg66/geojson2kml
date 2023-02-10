@@ -48,22 +48,19 @@ struct Geometry {
 }
 
 #[derive(Hash, Eq, PartialEq)]
-struct TrainLine {
-    company_name: String,
-    line_name: String,
+struct TrainLine<'a> {
+    company_name: &'a str,
+    line_name: &'a str,
 }
 
-fn search_candidates(query_line_name: &str) -> HashSet<TrainLine> {
+fn search_candidates<'a>(query_line_name: &str, geo: &'a Geo) -> HashSet<TrainLine<'a>> {
     let mut candidates = HashSet::new();
 
-    let content = std::fs::read_to_string("N02-20_RailroadSection.geojson").unwrap();
-    let deserialized: Geo = serde_json::from_str(&content).unwrap();
-
-    for feature in deserialized.features {
+    for feature in &geo.features {
         if feature.properties.N02_003.contains(query_line_name) {
             let candidate = TrainLine {
-                company_name: feature.properties.N02_004,
-                line_name: feature.properties.N02_003,
+                company_name: &feature.properties.N02_004,
+                line_name: &feature.properties.N02_003,
             };
             candidates.insert(candidate);
         }
@@ -72,13 +69,10 @@ fn search_candidates(query_line_name: &str) -> HashSet<TrainLine> {
     candidates
 }
 
-fn generate_kml(company_name: &str, line_name: &str) -> std::io::Result<()> {
+fn generate_kml(company_name: &str, line_name: &str, geo: &Geo) -> std::io::Result<()> {
     let filename = format!("{}_{}.kml", company_name, line_name);
     println!("creating {} ...", filename);
     let mut file = File::create(&filename)?;
-
-    let content = std::fs::read_to_string("N02-20_RailroadSection.geojson").unwrap();
-    let deserialized: Geo = serde_json::from_str(&content).unwrap();
 
     write!(
         file,
@@ -91,7 +85,7 @@ fn generate_kml(company_name: &str, line_name: &str) -> std::io::Result<()> {
 
     let mut id = 0;
 
-    for feature in deserialized.features {
+    for feature in &geo.features {
         if feature.properties.N02_003 == line_name && feature.properties.N02_004 == company_name {
             for line in &feature.geometry.coordinates {
                 write!(
@@ -146,10 +140,14 @@ fn generate_kml(company_name: &str, line_name: &str) -> std::io::Result<()> {
 
 fn main() -> std::io::Result<()> {
     let args: Vec<String> = env::args().collect();
-
     let query_line_name = &args[1] as &str;
 
-    let candidates: Vec<TrainLine> = search_candidates(query_line_name).into_iter().collect();
+    let content = std::fs::read_to_string("N02-20_RailroadSection.geojson").unwrap();
+    let geo: Geo = serde_json::from_str(&content).unwrap();
+
+    let candidates: Vec<TrainLine> = search_candidates(query_line_name, &geo)
+        .into_iter()
+        .collect();
 
     let candidate_num = candidates.len();
     let train_line = if candidate_num == 1 {
@@ -171,9 +169,9 @@ fn main() -> std::io::Result<()> {
         let chosen_id: usize = answer.parse().unwrap();
         &candidates[chosen_id]
     } else {
-        panic!("hoge");
+        panic!("{} is not found...", query_line_name);
     };
 
-    generate_kml(&train_line.company_name, &train_line.line_name)?;
+    generate_kml(&train_line.company_name, &train_line.line_name, &geo)?;
     Ok(())
 }
