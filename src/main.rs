@@ -1,3 +1,4 @@
+use core::panic;
 use serde::{Deserialize, Serialize};
 use serde_json;
 use std::env;
@@ -53,7 +54,7 @@ fn main() -> std::io::Result<()> {
 
     let filename = format!("{}_{}.kml", query_company_name, query_line_name);
     println!("creating {} ...", filename);
-    let mut file = File::create(filename)?;
+    let mut file = File::create(&filename)?;
 
     let content = std::fs::read_to_string("N02-20_RailroadSection.geojson").unwrap();
     let deserialized: Geo = serde_json::from_str(&content).unwrap();
@@ -70,8 +71,8 @@ fn main() -> std::io::Result<()> {
     let mut id = 0;
 
     for feature in deserialized.features {
-        if feature.properties.N02_003 == query_line_name
-            && feature.properties.N02_004 == query_company_name
+        if feature.properties.N02_003.contains(query_line_name)
+            && feature.properties.N02_004.contains(query_company_name)
         {
             for line in &feature.geometry.coordinates {
                 write!(
@@ -104,6 +105,12 @@ fn main() -> std::io::Result<()> {
             }
             id += 1;
         }
+    }
+
+    if id == 0 {
+        drop(file);
+        std::fs::remove_file(filename)?;
+        panic!("{} {} is not found...", query_company_name, query_line_name);
     }
 
     write!(
