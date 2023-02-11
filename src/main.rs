@@ -228,14 +228,32 @@ fn main() {
 
         let chosen_ids = choose_id(query, &candidates);
 
-        // TODO: ask merge or not
+        let flag_merge = if chosen_ids.len() > 1 {
+            println!("merge lines? [yes/no]:");
+            let answer = get_string_from_stdin();
+            if answer == "yes" {
+                true
+            } else {
+                false
+            }
+        } else {
+            false
+        };
 
-        let mut train_lines = Vec::new();
-        for id in chosen_ids {
-            train_lines.push(&candidates[id])
-        }
-        if let Err(_) = generate_kml(train_lines, &geo) {
-            eprintln!("failed to generate kml ...");
+        if flag_merge {
+            let mut train_lines = Vec::new();
+            for id in chosen_ids {
+                train_lines.push(&candidates[id])
+            }
+            if let Err(_) = generate_kml(train_lines, &geo) {
+                eprintln!("failed to generate kml ...");
+            }
+        } else {
+            for id in chosen_ids {
+                if let Err(_) = generate_kml(vec![&candidates[id]], &geo) {
+                    eprintln!("failed to generate kml ...");
+                }
+            }
         }
     }
 }
