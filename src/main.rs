@@ -57,11 +57,12 @@ fn get_string_from_stdin() -> String {
     buf.trim().to_string()
 }
 
-fn search_candidates<'a>(query_line_name: &str, geo: &'a Geo) -> HashSet<TrainLine<'a>> {
+fn search_candidates<'a>(query: &str, geo: &'a Geo) -> HashSet<TrainLine<'a>> {
     let mut candidates = HashSet::new();
 
     for feature in &geo.features {
-        if feature.properties.N02_003.contains(query_line_name) {
+        if feature.properties.N02_003.contains(query) || feature.properties.N02_004.contains(query)
+        {
             let candidate = TrainLine {
                 company_name: &feature.properties.N02_004,
                 line_name: &feature.properties.N02_003,
@@ -184,19 +185,16 @@ fn main() {
 
     loop {
         println!("==================================");
-        println!("enter train line name or 'q' to exit:");
+        println!("enter train company name or line name or 'q' to exit:");
         let query = get_string_from_stdin();
         if query == "q" {
             break;
         }
 
-        let query_line_name = &query as &str;
+        let query = &query as &str;
+        let candidates: Vec<TrainLine> = search_candidates(query, &geo).into_iter().collect();
 
-        let candidates: Vec<TrainLine> = search_candidates(query_line_name, &geo)
-            .into_iter()
-            .collect();
-
-        let chosen_id = choose_id(query_line_name, &candidates);
+        let chosen_id = choose_id(query, &candidates);
 
         if let Some(id) = chosen_id {
             if let Err(_) = generate_kml(&candidates[id], &geo) {
