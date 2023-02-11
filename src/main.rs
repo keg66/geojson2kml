@@ -132,7 +132,11 @@ fn generate_kml(train_lines: Vec<&TrainLine>, geo: &Geo) -> std::io::Result<()> 
     for train_line in &train_lines {
         let company_name = train_line.company_name;
         let line_name = train_line.line_name;
-        filename = format!("{}_{}-{}", filename, company_name, line_name);
+        filename = if filename.is_empty() {
+            format!("{}-{}", company_name, line_name)
+        } else {
+            format!("{}_{}-{}", filename, company_name, line_name)
+        };
     }
     let filename_with_ext = format!("{}.kml", filename);
 
