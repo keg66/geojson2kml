@@ -89,7 +89,7 @@ fn choose_id<'a>(query_line_name: &str, candidates: &'a Vec<TrainLine<'a>>) -> O
         let chosen_id: usize = answer.parse().unwrap();
         return Some(chosen_id);
     }
-    println!("{} is not found...", query_line_name);
+    eprintln!("{} is not found...", query_line_name);
     None
 }
 
@@ -159,7 +159,7 @@ fn generate_kml(train_line: &TrainLine, geo: &Geo) -> std::io::Result<()> {
     Ok(())
 }
 
-fn main() -> std::io::Result<()> {
+fn main() {
     let args: Vec<String> = env::args().collect();
     let query_line_name = &args[1] as &str;
 
@@ -173,7 +173,8 @@ fn main() -> std::io::Result<()> {
     let chosen_id = choose_id(query_line_name, &candidates);
 
     if let Some(id) = chosen_id {
-        generate_kml(&candidates[id], &geo)?;
+        if let Err(_) = generate_kml(&candidates[id], &geo) {
+            eprintln!("failed to generate kml ...");
+        }
     }
-    Ok(())
 }
