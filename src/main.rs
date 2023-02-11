@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
 use serde_json;
 use std::collections::HashSet;
-use std::env;
 use std::fs::File;
 use std::io::Write;
 
@@ -52,6 +51,12 @@ struct TrainLine<'a> {
     line_name: &'a str,
 }
 
+fn get_string_from_stdin() -> String {
+    let mut buf = String::new();
+    std::io::stdin().read_line(&mut buf).ok();
+    buf.trim().to_string()
+}
+
 fn search_candidates<'a>(query_line_name: &str, geo: &'a Geo) -> HashSet<TrainLine<'a>> {
     let mut candidates = HashSet::new();
 
@@ -83,9 +88,7 @@ fn choose_id<'a>(query_line_name: &str, candidates: &'a Vec<TrainLine<'a>>) -> O
         println!("choose: ");
 
         loop {
-            let mut word = String::new();
-            std::io::stdin().read_line(&mut word).ok();
-            let answer = word.trim().to_string();
+            let answer = get_string_from_stdin();
 
             match answer.parse::<usize>() {
                 Ok(chosen_id) => {
@@ -173,21 +176,24 @@ fn generate_kml(train_line: &TrainLine, geo: &Geo) -> std::io::Result<()> {
 }
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
-    let query_line_name = &args[1] as &str;
-
     let content = std::fs::read_to_string("N02-20_RailroadSection.geojson").unwrap();
     let geo: Geo = serde_json::from_str(&content).unwrap();
 
-    let candidates: Vec<TrainLine> = search_candidates(query_line_name, &geo)
-        .into_iter()
-        .collect();
+    loop {
+        println!("enter train line name:");
+        let query = get_string_from_stdin();
+        let query_line_name = &query as &str;
 
-    let chosen_id = choose_id(query_line_name, &candidates);
+        let candidates: Vec<TrainLine> = search_candidates(query_line_name, &geo)
+            .into_iter()
+            .collect();
 
-    if let Some(id) = chosen_id {
-        if let Err(_) = generate_kml(&candidates[id], &geo) {
-            eprintln!("failed to generate kml ...");
+        let chosen_id = choose_id(query_line_name, &candidates);
+
+        if let Some(id) = chosen_id {
+            if let Err(_) = generate_kml(&candidates[id], &geo) {
+                eprintln!("failed to generate kml ...");
+            }
         }
     }
 }
