@@ -144,42 +144,7 @@ fn generate_kml(train_line: &TrainLine, geo: &Geo) -> std::io::Result<()> {
         company_name, line_name
     )?;
 
-    let mut id = 0;
-
-    for feature in &geo.features {
-        if feature.properties.N02_003 == line_name && feature.properties.N02_004 == company_name {
-            for line in &feature.geometry.coordinates {
-                write!(
-                    file,
-                    "
-<Placemark>
-  <name>{}</name>
-  <LineString>
-    <coordinates>",
-                    id
-                )?;
-
-                for coordinate in line {
-                    assert_eq!(coordinate.len(), 2);
-                    write!(
-                        file,
-                        "
-      {},{},0",
-                        coordinate[0], coordinate[1]
-                    )?;
-                }
-
-                write!(
-                    file,
-                    "
-    </coordinates>
-  </LineString>
-</Placemark>"
-                )?;
-            }
-            id += 1;
-        }
-    }
+    write!(file, "{}", generate_kml_body(&train_line, &geo))?;
 
     write!(
         file,
@@ -191,6 +156,49 @@ fn generate_kml(train_line: &TrainLine, geo: &Geo) -> std::io::Result<()> {
 
     println!("succeeded!!");
     Ok(())
+}
+
+fn generate_kml_body(train_line: &TrainLine, geo: &Geo) -> String {
+    let mut body = String::new();
+
+    let company_name = train_line.company_name;
+    let line_name = train_line.line_name;
+
+    let mut id = 0;
+
+    for feature in &geo.features {
+        if feature.properties.N02_003 == line_name && feature.properties.N02_004 == company_name {
+            for line in &feature.geometry.coordinates {
+                body = format!(
+                    "{}
+<Placemark>
+  <name>{}</name>
+  <LineString>
+    <coordinates>",
+                    body, id
+                );
+
+                for coordinate in line {
+                    assert_eq!(coordinate.len(), 2);
+                    body = format!(
+                        "{}
+      {},{},0",
+                        body, coordinate[0], coordinate[1]
+                    );
+                }
+
+                body = format!(
+                    "{}
+    </coordinates>
+  </LineString>
+</Placemark>",
+                    body
+                );
+            }
+            id += 1;
+        }
+    }
+    body
 }
 
 fn main() {
