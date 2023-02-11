@@ -1,4 +1,3 @@
-use core::panic;
 use serde::{Deserialize, Serialize};
 use serde_json;
 use std::collections::HashSet;
@@ -69,7 +68,35 @@ fn search_candidates<'a>(query_line_name: &str, geo: &'a Geo) -> HashSet<TrainLi
     candidates
 }
 
-fn generate_kml(company_name: &str, line_name: &str, geo: &Geo) -> std::io::Result<()> {
+fn choose_id<'a>(query_line_name: &str, candidates: &'a Vec<TrainLine<'a>>) -> Option<usize> {
+    let candidate_num = candidates.len();
+    if candidate_num == 1 {
+        return Some(0);
+    } else if candidate_num > 1 {
+        println!("candidates:");
+        for id in 0..candidate_num {
+            println!(
+                "[{}] {} {}",
+                id, &candidates[id].company_name, &candidates[id].line_name
+            );
+        }
+        println!("choose: ");
+
+        let mut word = String::new();
+        std::io::stdin().read_line(&mut word).ok();
+        let answer = word.trim().to_string();
+
+        let chosen_id: usize = answer.parse().unwrap();
+        return Some(chosen_id);
+    }
+    println!("{} is not found...", query_line_name);
+    None
+}
+
+fn generate_kml(train_line: &TrainLine, geo: &Geo) -> std::io::Result<()> {
+    let company_name = train_line.company_name;
+    let line_name = train_line.line_name;
+
     let filename = format!("{}_{}.kml", company_name, line_name);
     println!("creating {} ...", filename);
     let mut file = File::create(&filename)?;
@@ -120,12 +147,6 @@ fn generate_kml(company_name: &str, line_name: &str, geo: &Geo) -> std::io::Resu
         }
     }
 
-    if id == 0 {
-        drop(file);
-        std::fs::remove_file(filename)?;
-        panic!("{} {} is not found...", company_name, line_name);
-    }
-
     write!(
         file,
         r#"
@@ -149,29 +170,10 @@ fn main() -> std::io::Result<()> {
         .into_iter()
         .collect();
 
-    let candidate_num = candidates.len();
-    let train_line = if candidate_num == 1 {
-        &candidates[0]
-    } else if candidate_num > 1 {
-        println!("candidates:");
-        for id in 0..candidate_num {
-            println!(
-                "[{}] {} {}",
-                id, &candidates[id].company_name, &candidates[id].line_name
-            );
-        }
-        println!("choose: ");
+    let chosen_id = choose_id(query_line_name, &candidates);
 
-        let mut word = String::new();
-        std::io::stdin().read_line(&mut word).ok();
-        let answer = word.trim().to_string();
-
-        let chosen_id: usize = answer.parse().unwrap();
-        &candidates[chosen_id]
-    } else {
-        panic!("{} is not found...", query_line_name);
-    };
-
-    generate_kml(&train_line.company_name, &train_line.line_name, &geo)?;
+    if let Some(id) = chosen_id {
+        generate_kml(&candidates[id], &geo)?;
+    }
     Ok(())
 }
