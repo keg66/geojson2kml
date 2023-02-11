@@ -127,24 +127,30 @@ fn choose_id<'a>(query_line_name: &str, candidates: &'a Vec<TrainLine<'a>>) -> B
     BTreeSet::new()
 }
 
-fn generate_kml(train_line: &TrainLine, geo: &Geo) -> std::io::Result<()> {
-    let company_name = train_line.company_name;
-    let line_name = train_line.line_name;
+fn generate_kml(train_lines: Vec<&TrainLine>, geo: &Geo) -> std::io::Result<()> {
+    let mut filename = String::new();
+    for train_line in &train_lines {
+        let company_name = train_line.company_name;
+        let line_name = train_line.line_name;
+        filename = format!("{}_{}-{}", filename, company_name, line_name);
+    }
+    let filename_with_ext = format!("{}.kml", filename);
 
-    let filename = format!("{}_{}.kml", company_name, line_name);
-    println!("creating {} ...", filename);
-    let mut file = File::create(&filename)?;
+    println!("creating {} ...", filename_with_ext);
+    let mut file = File::create(&filename_with_ext)?;
 
     write!(
         file,
         r#"<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
 <Document>
-<name>{} {}</name>"#,
-        company_name, line_name
+<name>{}</name>"#,
+        filename
     )?;
 
-    write!(file, "{}", generate_kml_body(&train_line, &geo))?;
+    for train_line in &train_lines {
+        write!(file, "{}", generate_kml_body(&train_line, &geo))?;
+    }
 
     write!(
         file,
@@ -172,10 +178,10 @@ fn generate_kml_body(train_line: &TrainLine, geo: &Geo) -> String {
                 body = format!(
                     "{}
 <Placemark>
-  <name>{}</name>
+  <name>{} {} {}</name>
   <LineString>
     <coordinates>",
-                    body, id
+                    body, company_name, line_name, id
                 );
 
                 for coordinate in line {
@@ -218,10 +224,14 @@ fn main() {
 
         let chosen_ids = choose_id(query, &candidates);
 
+        // TODO: ask merge or not
+
+        let mut train_lines = Vec::new();
         for id in chosen_ids {
-            if let Err(_) = generate_kml(&candidates[id], &geo) {
-                eprintln!("failed to generate kml ...");
-            }
+            train_lines.push(&candidates[id])
+        }
+        if let Err(_) = generate_kml(train_lines, &geo) {
+            eprintln!("failed to generate kml ...");
         }
     }
 }
