@@ -82,12 +82,25 @@ fn choose_id<'a>(query_line_name: &str, candidates: &'a Vec<TrainLine<'a>>) -> O
         }
         println!("choose: ");
 
-        let mut word = String::new();
-        std::io::stdin().read_line(&mut word).ok();
-        let answer = word.trim().to_string();
+        loop {
+            let mut word = String::new();
+            std::io::stdin().read_line(&mut word).ok();
+            let answer = word.trim().to_string();
 
-        let chosen_id: usize = answer.parse().unwrap();
-        return Some(chosen_id);
+            match answer.parse::<usize>() {
+                Ok(chosen_id) => {
+                    if chosen_id >= candidate_num {
+                        eprintln!("{} is invalid... choose again:", answer);
+                        continue;
+                    }
+                    return Some(chosen_id);
+                }
+                Err(_) => {
+                    eprintln!("{} is invalid... choose again:", answer);
+                    continue;
+                }
+            }
+        }
     }
     eprintln!("{} is not found...", query_line_name);
     None
