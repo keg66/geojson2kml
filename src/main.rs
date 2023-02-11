@@ -85,21 +85,24 @@ fn choose_id<'a>(query_line_name: &str, candidates: &'a Vec<TrainLine<'a>>) -> O
                 id, &candidates[id].company_name, &candidates[id].line_name
             );
         }
-        println!("choose: ");
 
         loop {
+            println!("choose '{}'...'{}' or : 'q' to exit", 0, candidate_num - 1);
             let answer = get_string_from_stdin();
+            if answer == "q" {
+                return None;
+            }
 
             match answer.parse::<usize>() {
                 Ok(chosen_id) => {
                     if chosen_id >= candidate_num {
-                        eprintln!("{} is invalid... choose again:", answer);
+                        eprintln!("{} is invalid...", answer);
                         continue;
                     }
                     return Some(chosen_id);
                 }
                 Err(_) => {
-                    eprintln!("{} is invalid... choose again:", answer);
+                    eprintln!("{} is invalid...", answer);
                     continue;
                 }
             }
@@ -180,8 +183,13 @@ fn main() {
     let geo: Geo = serde_json::from_str(&content).unwrap();
 
     loop {
-        println!("enter train line name:");
+        println!("==================================");
+        println!("enter train line name or 'q' to exit:");
         let query = get_string_from_stdin();
+        if query == "q" {
+            break;
+        }
+
         let query_line_name = &query as &str;
 
         let candidates: Vec<TrainLine> = search_candidates(query_line_name, &geo)
