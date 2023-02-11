@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use serde_json;
-use std::collections::HashSet;
+use std::collections::BTreeSet;
 use std::fs::File;
 use std::io::Write;
 
@@ -45,7 +45,7 @@ struct Geometry {
     coordinates: Vec<Vec<Vec<f32>>>,
 }
 
-#[derive(Hash, Eq, PartialEq)]
+#[derive(Hash, Eq, PartialEq, Ord, PartialOrd)]
 struct TrainLine<'a> {
     company_name: &'a str,
     line_name: &'a str,
@@ -57,8 +57,8 @@ fn get_string_from_stdin() -> String {
     buf.trim().to_string()
 }
 
-fn search_candidates<'a>(query: &str, geo: &'a Geo) -> HashSet<TrainLine<'a>> {
-    let mut candidates = HashSet::new();
+fn search_candidates<'a>(query: &str, geo: &'a Geo) -> BTreeSet<TrainLine<'a>> {
+    let mut candidates = BTreeSet::new();
 
     for feature in &geo.features {
         if feature.properties.N02_003.contains(query) || feature.properties.N02_004.contains(query)
