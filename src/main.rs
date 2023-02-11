@@ -74,11 +74,15 @@ fn search_candidates<'a>(query: &str, geo: &'a Geo) -> BTreeSet<TrainLine<'a>> {
     candidates
 }
 
-fn choose_id<'a>(query_line_name: &str, candidates: &'a Vec<TrainLine<'a>>) -> Option<usize> {
+fn choose_id<'a>(query_line_name: &str, candidates: &'a Vec<TrainLine<'a>>) -> BTreeSet<usize> {
     let candidate_num = candidates.len();
     if candidate_num == 1 {
-        return Some(0);
-    } else if candidate_num > 1 {
+        let mut ids = BTreeSet::new();
+        ids.insert(0);
+        return ids;
+    }
+    if candidate_num > 1 {
+        let mut ids = BTreeSet::new();
         println!("candidates:");
         for id in 0..candidate_num {
             println!(
@@ -89,28 +93,38 @@ fn choose_id<'a>(query_line_name: &str, candidates: &'a Vec<TrainLine<'a>>) -> O
 
         loop {
             println!("choose '{}'...'{}' or : 'q' to exit", 0, candidate_num - 1);
-            let answer = get_string_from_stdin();
-            if answer == "q" {
-                return None;
+            let answers = get_string_from_stdin();
+            if answers == "q" {
+                return BTreeSet::new();
             }
 
-            match answer.parse::<usize>() {
-                Ok(chosen_id) => {
-                    if chosen_id >= candidate_num {
-                        eprintln!("{} is invalid...", answer);
-                        continue;
+            let answers: Vec<&str> = answers.split(",").collect();
+            for answer in answers {
+                match answer.parse::<usize>() {
+                    Ok(chosen_id) => {
+                        if chosen_id >= candidate_num {
+                            eprintln!("{} is invalid...", answer);
+                            ids.clear();
+                            break;
+                        }
+                        ids.insert(chosen_id);
                     }
-                    return Some(chosen_id);
-                }
-                Err(_) => {
-                    eprintln!("{} is invalid...", answer);
-                    continue;
+                    Err(_) => {
+                        eprintln!("{} is invalid...", answer);
+                        ids.clear();
+                        break;
+                    }
                 }
             }
+
+            if !ids.is_empty() {
+                break;
+            }
         }
+        return ids;
     }
     eprintln!("{} is not found...", query_line_name);
-    None
+    BTreeSet::new()
 }
 
 fn generate_kml(train_line: &TrainLine, geo: &Geo) -> std::io::Result<()> {
@@ -194,9 +208,9 @@ fn main() {
         let query = &query as &str;
         let candidates: Vec<TrainLine> = search_candidates(query, &geo).into_iter().collect();
 
-        let chosen_id = choose_id(query, &candidates);
+        let chosen_ids = choose_id(query, &candidates);
 
-        if let Some(id) = chosen_id {
+        for id in chosen_ids {
             if let Err(_) = generate_kml(&candidates[id], &geo) {
                 eprintln!("failed to generate kml ...");
             }
