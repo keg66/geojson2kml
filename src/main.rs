@@ -257,3 +257,95 @@ fn main() {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_generate_kml() {
+        let geo_content = r#"{
+            "type": "FeatureCollection",
+            "name": "N02-20_RailroadSection",
+            "crs": {
+                "type": "name",
+                "properties": {
+                    "name": "urn:ogc:def:crs:EPSG::4326"
+                }
+            },
+            "features": [
+                {
+                    "type": "Feature",
+                    "properties": {
+                        "N02_001": "1",
+                        "N02_002": "2",
+                        "N02_003": "line1",
+                        "N02_004": "company1"
+                    },
+                    "geometry": {
+                        "type": "MultiLineString",
+                        "coordinates": [
+                            [
+                                [139.767, 35.681],
+                                [139.768, 35.682]
+                            ],
+                            [
+                                [139.769, 35.683],
+                                [139.77, 35.684]
+                            ]
+                        ]
+                    }
+                },
+                {
+                    "type": "Feature",
+                    "properties": {
+                        "N02_001": "3",
+                        "N02_002": "4",
+                        "N02_003": "line2",
+                        "N02_004": "company2"
+                    },
+                    "geometry": {
+                        "type": "MultiLineString",
+                        "coordinates": [
+                            [
+                                [139.771, 35.685],
+                                [139.772, 35.686]
+                            ]
+                        ]
+                    }
+                }
+            ]
+        }"#;
+        let geo: Geo = serde_json::from_str(geo_content).unwrap();
+
+        let train_line1 = TrainLine {
+            company_name: "company1",
+            line_name: "line1",
+        };
+        let kml_body = generate_kml_body(&train_line1, &geo);
+        let expected_kml = r#"
+<Placemark>
+  <name>company1 line1 0</name>
+  <LineString>
+    <coordinates>
+      139.767,35.681,0
+      139.768,35.682,0
+    </coordinates>
+  </LineString>
+</Placemark>
+<Placemark>
+  <name>company1 line1 0</name>
+  <LineString>
+    <coordinates>
+      139.769,35.683,0
+      139.77,35.684,0
+    </coordinates>
+  </LineString>
+</Placemark>"#;
+        assert_eq!(
+            kml_body.trim().replace("\r\n", "\n"),
+            expected_kml.trim().replace("\r\n", "\n"),
+            "Generated KML does not match the expected KML"
+        );
+    }
+}
