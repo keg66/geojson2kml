@@ -1,6 +1,7 @@
 use geojson2kml::{Geo, TrainLine, search_candidates, generate_kml_body, generate_filename};
 use serde_json;
 use std::collections::BTreeSet;
+use std::env;
 use std::fs::File;
 use std::io::Write;
 
@@ -98,8 +99,31 @@ fn generate_kml(train_lines: Vec<&TrainLine>, geo: &Geo) -> std::io::Result<()> 
 
 
 fn main() {
-    let content = std::fs::read_to_string("N02-20_RailroadSection.geojson").unwrap();
-    let geo: Geo = serde_json::from_str(&content).unwrap();
+    let args: Vec<String> = env::args().collect();
+    
+    if args.len() != 2 {
+        eprintln!("Usage: {} <geojson_file>", args[0]);
+        eprintln!("Example: {} N02-20_RailroadSection.geojson", args[0]);
+        std::process::exit(1);
+    }
+    
+    let geojson_file = &args[1];
+    
+    let content = match std::fs::read_to_string(geojson_file) {
+        Ok(content) => content,
+        Err(e) => {
+            eprintln!("Error reading file '{}': {}", geojson_file, e);
+            std::process::exit(1);
+        }
+    };
+    
+    let geo: Geo = match serde_json::from_str(&content) {
+        Ok(geo) => geo,
+        Err(e) => {
+            eprintln!("Error parsing JSON from '{}': {}", geojson_file, e);
+            std::process::exit(1);
+        }
+    };
 
     loop {
         println!("==================================");
