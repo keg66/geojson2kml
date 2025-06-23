@@ -1,5 +1,8 @@
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
+use quick_xml::Writer;
+use quick_xml::events::{Event, BytesEnd, BytesStart, BytesText};
+use std::io::Cursor;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Geo {
@@ -66,46 +69,53 @@ pub fn search_candidates<'a>(query: &str, geo: &'a Geo) -> BTreeSet<TrainLine<'a
 }
 
 pub fn generate_kml_body(train_line: &TrainLine, geo: &Geo) -> String {
-    let mut body = String::new();
+    let mut writer = Writer::new(Cursor::new(Vec::new()));
+    let mut id = 0;
 
     let company_name = train_line.company_name;
     let line_name = train_line.line_name;
 
-    let mut id = 0;
-
     for feature in &geo.features {
         if feature.properties.N02_003 == line_name && feature.properties.N02_004 == company_name {
             for line in &feature.geometry.coordinates {
-                body = format!(
-                    "{}
-<Placemark>
-  <name>{} {} {}</name>
-  <LineString>
-    <coordinates>",
-                    body, company_name, line_name, id
-                );
+                // <Placemark>
+                writer.write_event(Event::Start(BytesStart::new("Placemark"))).unwrap();
 
-                for coordinate in line {
-                    assert_eq!(coordinate.len(), 2);
-                    body = format!(
-                        "{}
-      {},{},0",
-                        body, coordinate[0], coordinate[1]
-                    );
-                }
+                // <name>
+                writer.write_event(Event::Start(BytesStart::new("name"))).unwrap();
+                let name_text = format!("{} {} {}", company_name, line_name, id);
+                writer.write_event(Event::Text(BytesText::new(&name_text))).unwrap();
+                writer.write_event(Event::End(BytesEnd::new("name"))).unwrap();
 
-                body = format!(
-                    "{}
-    </coordinates>
-  </LineString>
-</Placemark>",
-                    body
-                );
+                // <LineString>
+                writer.write_event(Event::Start(BytesStart::new("LineString"))).unwrap();
+
+                // <coordinates>
+                writer.write_event(Event::Start(BytesStart::new("coordinates"))).unwrap();
+                
+                let coordinates_text = line.iter()
+                    .map(|coordinate| {
+                        assert_eq!(coordinate.len(), 2);
+                        format!("{},{},0", coordinate[0], coordinate[1])
+                    })
+                    .collect::<Vec<_>>()
+                    .join("\n      ");
+                let formatted_coords = format!("\n      {}\n    ", coordinates_text);
+                
+                writer.write_event(Event::Text(BytesText::new(&formatted_coords))).unwrap();
+                writer.write_event(Event::End(BytesEnd::new("coordinates"))).unwrap();
+
+                // </LineString>
+                writer.write_event(Event::End(BytesEnd::new("LineString"))).unwrap();
+
+                // </Placemark>
+                writer.write_event(Event::End(BytesEnd::new("Placemark"))).unwrap();
             }
             id += 1;
         }
     }
-    body
+
+    String::from_utf8(writer.into_inner().into_inner()).unwrap()
 }
 
 pub fn generate_filename(train_lines: &[&TrainLine]) -> String {
