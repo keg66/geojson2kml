@@ -1,6 +1,10 @@
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 
+pub mod error;
+pub mod io;
+pub mod ui;
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Geo {
     pub r#type: String,
